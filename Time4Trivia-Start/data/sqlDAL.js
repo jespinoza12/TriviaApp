@@ -61,7 +61,7 @@ exports.getQuestions = async function () {
             let answers = [];
             for (key in answerResults) {
                 let a = answerResults[key];
-                answers.push({ answers: a.Answer, Correct: a.Correct });
+                answers.push({ answer: a.Answer, Correct: a.Correct });
             }
 
             questions.push(new Question(q.QuestionId, q.Question, answers));

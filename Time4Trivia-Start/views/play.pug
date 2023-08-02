@@ -2,4 +2,15 @@ extends layout
 
 block content
     h1 Play Time 4 Trivia!
-    button Go
+
+    form(action="/g/submitAnswers", method="POST")
+        each question in questions
+            .question-container
+                p #{question.question}
+                each answer in question.answers
+                    label
+                        input(type="radio", name=`answer_${question.questionId}`, value=`${answer.answer}`)
+                        | #{answer.answer}
+                hr
+
+        button(type="submit") Submit Answers
