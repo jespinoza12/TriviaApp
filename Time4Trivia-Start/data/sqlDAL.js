@@ -1,8 +1,10 @@
 // sqlDAL is responsible to for all interactions with mysql for Membership
 const User = require('../models/user').User;
 const Result = require('../models/result').Result;
+const Question = require('../models/question').Question;
 const STATUS_CODES = require('../models/statusCodes').STATUS_CODES;
 
+const { json } = require('express');
 const mysql = require('mysql2/promise');
 const sqlConfig = {
     host: 'localhost',
@@ -12,6 +14,68 @@ const sqlConfig = {
     multipleStatements: true
 };
 
+exports.createQuestion = async function (question, answers) {
+    //Create questions that has the question and with the answers insert for each answer in Answers table with the QuestionID, Answer, and IsCorrect which is true or false
+    let result = new Result(STATUS_CODES.success, null);
+
+    const con = await mysql.createConnection(sqlConfig);
+
+    try {
+        let sql = `insert into Questions (Question) values ('${question}');`;
+        let [questionResult, ] = await con.query(sql);
+
+        console.log(questionResult);
+
+        let questionId = questionResult.insertId;
+
+        for(key in answers){
+            let answer = answers[key];
+            let sql = `insert into Answers (QuestionId, Answer, Correct) values (${questionId}, '${answer.answer}', ${answer.Correct});`;
+            let [answerResult, ] = await con.query(sql);
+            console.log(answerResult);
+        }
+    }
+    catch (err) {
+        console.log(err);
+        result.status = STATUS_CODES.error;
+    }
+    finally {
+        con.end();
+    }
+}
+
+exports.getQuestions = async function () {
+    let questions = [];
+
+    const con = await mysql.createConnection(sqlConfig);
+
+    try {
+        let sql = `select * from Questions;`;
+        const [questionResults, ] = await con.query(sql);
+
+        for (key in questionResults) {
+            let q = questionResults[key];
+            let sql = `select * from Answers where QuestionId = ${q.QuestionId};`;
+            const [answerResults, ] = await con.query(sql);
+
+            let answers = [];
+            for (key in answerResults) {
+                let a = answerResults[key];
+                answers.push({ answer: a.Answer, Correct: a.Correct });
+            }
+
+            questions.push(new Question(q.QuestionId, q.Question, answers));
+
+            // Log the contents of the answers array for each question
+        }
+    } catch (err) {
+        console.log(err);
+    } finally {
+        con.end();
+    }
+
+    return questions;
+}
 /**
  * @returns and array of user models
  */
@@ -57,7 +121,7 @@ exports.getAllUsers = async function () {
 /**
  * @returns and array of user models
  */
- exports.getUsersByRole = async function (role) {
+exports.getUsersByRole = async function (role) {
     users = [];
 
     const con = await mysql.createConnection(sqlConfig);
