@@ -1,14 +1,9 @@
--- This is the initial data script for Time 4 Trivia
--- Running this script will insert the intial data for the application
 use Time4Trivia;
 
--- Insert Initial Data
 INSERT INTO Questions (question) VALUES ('What is the capital of the United States?');
 
--- Retrieve the question ID that was automatically generated
 SET @questionId = LAST_INSERT_ID();
 
--- Insert the answers into the Answers table, relating them to the question using the question ID
 INSERT INTO Answers (QuestionId, answer, correct) VALUES (@questionId, 'Washington D.C.', true);
 INSERT INTO Answers (QuestionId, answer, correct) VALUES (@questionId, 'New York', false);
 INSERT INTO Answers (QuestionId, answer, correct) VALUES (@questionId, 'Los Angeles', false);
@@ -33,11 +28,6 @@ insert into UserRoles (UserId, RoleId) values (@userId, @roleId);
 set @userId = (select UserId from Users where username = 'admin');
 set @roleId = (select RoleId from Roles where Role = 'admin');
 insert into UserRoles (UserId, RoleId) values (@userId, @roleId);
-
--- test data
--- select * from users;
--- select * from roles;
--- select * from userroles;
 
 select u.userid, u.username, r.role
 from users u 
