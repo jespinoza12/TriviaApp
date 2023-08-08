@@ -8,11 +8,13 @@ router.get('/play', async function(req, res, next) {
       res.redirect('/u/login');
     } else {
       const questions = await questionController.getQuestions();
+      // Shuffle the questions randomly
+      const shuffledQuestions = shuffleArray(questions).slice(0, 10);
       res.render('play', {
         user: req.session.user,
         isAdmin: req.cookies.isAdmin,
         title: 'Time 4 Trivia',
-        questions: questions
+        questions: shuffledQuestions
       });
     }
   } catch (err) {
@@ -55,8 +57,8 @@ router.post('/submitAnswers', async function(req, res, next) {
     }
 
     const nextQuestionIndex = req.session.userProgress.length;
-    if (nextQuestionIndex >= questions.length) {
-      return res.redirect('/g/results'); 
+    if (nextQuestionIndex >= 10) {
+      return res.redirect('/g/results');
     } else {
       return res.redirect('/g/play');
     }
@@ -66,6 +68,15 @@ router.post('/submitAnswers', async function(req, res, next) {
   }
 });
 
+function shuffleArray(array) {
+  const shuffledArray = array.slice();
+  for (let i = shuffledArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffledArray[i], shuffledArray[j]] = [shuffledArray[j], shuffledArray[i]];
+  }
+  return shuffledArray;
+}
+
 router.get('/results', function(req, res, next) {
   try {
     if (!req.session.user || !req.session.userProgress) {
@@ -73,7 +84,7 @@ router.get('/results', function(req, res, next) {
     }
     const user = req.session.user;
     const userProgress = req.session.userProgress;
-    const totalQuestions = userProgress.length;
+    const totalQuestions = 10;
     let score = 0;
 
     for (const progress of userProgress) {
