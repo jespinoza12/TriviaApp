@@ -161,7 +161,3 @@ set @userId = (select UserId from Users where username = 'admin');
 set @roleId = (select RoleId from Roles where Role = 'admin');
 insert into UserRoles (UserId, RoleId) values (@userId, @roleId);
 
-select u.userid, u.username, r.role
-from Users u 
-	left join userroles ur on u.userid = ur.userid
-	left join roles r on r.roleid = ur.roleid;
