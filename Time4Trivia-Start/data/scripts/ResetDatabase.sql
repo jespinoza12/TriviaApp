@@ -1,3 +1,5 @@
+use Time4Trivia;
+
 SET FOREIGN_KEY_CHECKS = 0;
 
 DROP TABLE IF EXISTS UserRoles;
