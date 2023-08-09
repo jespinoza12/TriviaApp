@@ -149,7 +149,6 @@ insert into Users (username, password, email, firstname, lastname) values ('phil
 insert into Roles (Role, RoleDescription) values ('user', 'standard user role');
 insert into Roles (Role, RoleDescription) values ('admin', 'site admins');
 
-
 set @userId = (select UserId from Users where username = 'test');
 set @roleId = (select RoleId from Roles where Role = 'user');
 insert into UserRoles (UserId, RoleId) values (@userId, @roleId);
@@ -163,6 +162,6 @@ set @roleId = (select RoleId from Roles where Role = 'admin');
 insert into UserRoles (UserId, RoleId) values (@userId, @roleId);
 
 select u.userid, u.username, r.role
-from users u 
+from Users u 
 	left join userroles ur on u.userid = ur.userid
 	left join roles r on r.roleid = ur.roleid;
