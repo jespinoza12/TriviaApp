@@ -8,8 +8,8 @@ const { json } = require('express');
 const mysql = require('mysql2/promise');
 const sqlConfig = {
     host: 'localhost',
-    user: 'root',
-    password: '7piercerS!',
+    user: 'database',
+    password: '&my$qlGr4p3tUrn',
     database: 'Time4Trivia',
     multipleStatements: true
 };
