@@ -4,6 +4,15 @@ const sqlDAL = require('../data/sqlDAL');
 const Result = require('../models/result').Result;
 const STATUS_CODES = require('../models/statusCodes').STATUS_CODES;
 
+
+const rolePattern = /^user|admin$/;
+const emailPattern = /^([a-zA-Z0-9]+@[a-zA-Z0-9]+\.[a-zA-Z]{2,6})*$/;
+const textPattern = /^[a-zA-Z0-9]{3,16}$/;
+const namePattern = /^[A-Za-z]{3,25}$/;
+const questionPattern = /^[A-Za-z?]+$/;
+const answerPattern = /^[A-Za-z.]+$/;
+const difficultyPattern = /^Easy|Medium|Hard$/;
+
 /**
  * 
  * @returns an array of user models
@@ -25,10 +34,19 @@ exports.getUsers = async function (role = 'user') {
  * @returns a Result with status/message and the new user id as data
  */
 exports.createUser = async function (username, email, firstName, lastName, password) {
-    let hashedPassword = await bcrypt.hash(password, 10);
 
+    if (emailPattern.test(email) == false) {
+        return { status: 'Failure', message: 'Invalid email' }
+    } if (namePattern.test(firstName) == false) {
+        return { status: 'Failure', message: 'Invalid name' }
+    } if (namePattern.test(lastName) == false) {
+        return { status: 'Failure', message: 'Invalid name' }
+    } if (textPattern.test(username) == false) {
+        return { status: 'Failure', message: 'Invalid username' }
+    } if (textPattern.test(password) == false) {
+        return { status: 'Failure', message: 'Invalid password' }
+    }
     let result = await sqlDAL.createUser(username, hashedPassword, email, firstName, lastName);
-
     return result;
 }
 
@@ -41,17 +59,17 @@ exports.createUser = async function (username, email, firstName, lastName, passw
  */
 exports.updateProfile = async function (userId, firstName, lastName) {
     let user = await sqlDAL.getUserById(userId);
-
     // If we couldn't find the user
     if (!user) {
         return new Result(STATUS_CODES.failure, message = 'User not found.');
     }
-
+    if (namePattern.test(firstName) == false | namePattern.test(lastName) == false){
+        return { status: 'Failure', message: 'Please enter a valid name' }
+    }
     return await sqlDAL.updateProfile(userId, firstName, lastName);
 }
 
 /**
- * 
  * @param {*} userId 
  * @param {*} currentPassword 
  * @param {*} newPassword 
@@ -60,9 +78,12 @@ exports.updateProfile = async function (userId, firstName, lastName) {
  */
 exports.updateUserPassword = async function (userId, currentPassword, newPassword, confirmNewPassword) {
     // If new passwords don't match
+    if (textPattern.test(newPassword) == false){
+        return { status: 'Failure', message: 'Please enter a valid password' }
+    }
     if (newPassword != confirmNewPassword) {
         return { status: 'Failure', message: 'Entered passwords do not match' }
-    }
+    } 
 
     let hashedNewPassword = await bcrypt.hash(newPassword, 10);
 
@@ -91,7 +112,9 @@ exports.updateUserPassword = async function (userId, currentPassword, newPasswor
  */
 exports.login = async function (username, password) {
     // console.log(`Logging in with username ${username}`);
-
+    if (textPattern.test(username) == false) {
+        return { status: 'Failure', message: 'Invalid username' }
+    }
     // Get User by Username
     let user = await sqlDAL.getUserByUsername(username);
 
@@ -99,10 +122,9 @@ exports.login = async function (username, password) {
 
     let passwordsMatch = await bcrypt.compare(password, user.password); // does the given password match the user's hashed password?
 
-    if (passwordsMatch) {
+    if (passwordsMatch && textPattern.test(password) == true) {
         // console.log('Successful login for ' + username);
         // console.log(user);
-
         return new Result(STATUS_CODES.success, 'Valid Login.', user);
     } else {
         return new Result(STATUS_CODES.failure, 'Invalid Login.');

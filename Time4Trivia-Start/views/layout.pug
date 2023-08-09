@@ -10,8 +10,10 @@ html
       if user
         if isAdmin == 'yes'
           a(class='', href='/a/users/user') Users
+          a(class='', href='/a/users/questionStatus') Pending
         a(class='', href='/g/play') Play
         a(class='', href='/u/profile') Profile
+        a(class='', href='/u/newQuestion') Add
         a(class='', href='/u/logout') Logout #{user.username}
       else
         a(class='', href='/u/login') Login

@@ -1,13 +1,98 @@
 const express = require('express');
 const router = express.Router();
+const questionController = require('../controllers/questionController');
 
+router.get('/play', async function(req, res, next) {
+  try {
+    if (!req.session.user) {
+      res.redirect('/u/login');
+    } else {
+      const questions = await questionController.getQuestions();
+      res.render('play', {
+        user: req.session.user,
+        isAdmin: req.cookies.isAdmin,
+        title: 'Time 4 Trivia',
+        questions: questions
+      });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Internal Server Error');
+  }
+});
 
-router.get('/play', function(req, res, next) {
-  // TODO: Implement Game
-  if (!req.session.user) {
-    res.redirect('/u/login');
-  }else if (req.session.user) {
-    res.render('play', {user: req.session.user});
+router.post('/submitAnswers', async function(req, res, next) {
+  try {
+    if (!req.session.user) {
+      return res.redirect('/u/login');
+    }
+
+    const questions = await questionController.getQuestions();
+    const userAnswers = {};
+    for (const question of questions) {
+      const selectedAnswer = req.body[`answer_${question.questionId}`];
+      userAnswers[question.questionId] = selectedAnswer;
+    }
+    let score = 0;
+
+    req.session.userProgress = [];
+
+    for (const question of questions) {
+      const correctAnswer = question.answers.find(answer => answer.Correct === 1);
+      const userAnswer = userAnswers[question.questionId];
+      const isCorrect = userAnswer === correctAnswer.answer;
+
+      if (isCorrect) {
+        score++;
+      }
+
+      req.session.userProgress.push({
+        question: question.question,
+        userAnswer,
+        correctAnswer: correctAnswer.answer,
+        isCorrect
+      });
+    }
+
+    const nextQuestionIndex = req.session.userProgress.length;
+    if (nextQuestionIndex >= questions.length) {
+      return res.redirect('/g/results'); 
+    } else {
+      return res.redirect('/g/play');
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+router.get('/results', function(req, res, next) {
+  try {
+    if (!req.session.user || !req.session.userProgress) {
+      return res.redirect('/');
+    }
+    const user = req.session.user;
+    const userProgress = req.session.userProgress;
+    const totalQuestions = userProgress.length;
+    let score = 0;
+
+    for (const progress of userProgress) {
+      if (progress.isCorrect) {
+        score++;
+      }
+    }
+
+    req.session.userProgress = [];
+
+    res.render('results', {
+      user,
+      score,
+      totalQuestions,
+      userProgress
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Internal Server Error');
   }
 });
 

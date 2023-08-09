@@ -1,0 +1,10 @@
+extends layout
+
+block content
+    h1 Trivia Game Results
+    p Hello #{user.firstname}, you've completed the trivia game!
+
+    p Your Score: #{score} out of #{totalQuestions}
+
+    a(href="/g/play") Play Again
+    a(href="/") Go to Homepage

@@ -1,6 +1,7 @@
 // sqlDAL is responsible to for all interactions with mysql for Membership
 const User = require('../models/user').User;
 const Result = require('../models/result').Result;
+const Question = require('../models/question').Question;
 const STATUS_CODES = require('../models/statusCodes').STATUS_CODES;
 
 const mysql = require('mysql2/promise');
@@ -11,6 +12,69 @@ const sqlConfig = {
     database: 'Time4Trivia',
     multipleStatements: true
 };
+
+exports.createQuestion = async function (question, answers) {
+    //Create questions that has the question and with the answers insert for each answer in Answers table with the QuestionID, Answer, and IsCorrect which is true or false
+    let result = new Result(STATUS_CODES.success, null);
+
+    const con = await mysql.createConnection(sqlConfig);
+
+    try {
+        let sql = `insert into Questions (Question) values ('${question}');`;
+        let [questionResult,] = await con.query(sql);
+
+        console.log(questionResult);
+
+        let questionId = questionResult.insertId;
+
+        for (key in answers) {
+            let answer = answers[key];
+            let sql = `insert into Answers (QuestionId, Answer, Correct) values (${questionId}, '${answer.answer}', ${answer.Correct});`;
+            let [answerResult,] = await con.query(sql);
+            console.log(answerResult);
+        }
+    }
+    catch (err) {
+        console.log(err);
+        result.status = STATUS_CODES.error;
+    }
+    finally {
+        con.end();
+    }
+}
+
+exports.getQuestions = async function () {
+    let questions = [];
+
+    const con = await mysql.createConnection(sqlConfig);
+
+    try {
+        let sql = `select * from Questions;`;
+        const [questionResults,] = await con.query(sql);
+
+        for (key in questionResults) {
+            let q = questionResults[key];
+            let sql = `select * from Answers where QuestionId = ${q.QuestionId};`;
+            const [answerResults,] = await con.query(sql);
+
+            let answers = [];
+            for (key in answerResults) {
+                let a = answerResults[key];
+                answers.push({ answer: a.Answer, Correct: a.Correct });
+            }
+
+            questions.push(new Question(q.QuestionId, q.Question, answers));
+
+            // Log the contents of the answers array for each question
+        }
+    } catch (err) {
+        console.log(err);
+    } finally {
+        con.end();
+    }
+
+    return questions;
+}
 
 /**
  * @returns and array of user models
@@ -23,23 +87,23 @@ exports.getAllUsers = async function () {
     try {
         let sql = `select * from Users;`;
 
-        const [userResults, ] = await con.query(sql);
+        const [userResults,] = await con.query(sql);
 
         // console.log('getAllUsers: user results');
         // console.log(userResults);
 
-        for(key in userResults){
+        for (key in userResults) {
             let u = userResults[key];
 
             let sql = `select UserId, Role from UserRoles ur join Roles r on ur.roleid = r.roleid where ur.UserId = ${u.UserId}`;
             console.log(sql);
-            const [roleResults, ] = await con.query(sql);
+            const [roleResults,] = await con.query(sql);
 
             // console.log('getAllUsers: role results');
             // console.log(roleResults);
 
             let roles = [];
-            for(key in roleResults){
+            for (key in roleResults) {
                 let role = roleResults[key];
                 roles.push(role.Role);
             }
@@ -47,7 +111,7 @@ exports.getAllUsers = async function () {
         }
     } catch (err) {
         console.log(err);
-    }finally{
+    } finally {
         con.end();
     }
 
@@ -57,7 +121,7 @@ exports.getAllUsers = async function () {
 /**
  * @returns and array of user models
  */
- exports.getUsersByRole = async function (role) {
+exports.getUsersByRole = async function (role) {
     users = [];
 
     const con = await mysql.createConnection(sqlConfig);
@@ -65,23 +129,23 @@ exports.getAllUsers = async function () {
     try {
         let sql = `select * from Users u join UserRoles ur on u.userid = ur.userId join Roles r on ur.roleId = r.roleId where r.role = '${role}'`;
 
-        const [userResults, ] = await con.query(sql);
+        const [userResults,] = await con.query(sql);
 
         // console.log('getAllUsers: user results');
         // console.log(userResults);
 
-        for(key in userResults){
+        for (key in userResults) {
             let u = userResults[key];
 
             let sql = `select UserId, Role from UserRoles ur join Roles r on ur.roleid = r.roleid where ur.UserId = ${u.UserId}`;
             console.log(sql);
-            const [roleResults, ] = await con.query(sql);
+            const [roleResults,] = await con.query(sql);
 
             // console.log('getAllUsers: role results');
             // console.log(roleResults);
 
             let roles = [];
-            for(key in roleResults){
+            for (key in roleResults) {
                 let role = roleResults[key];
                 roles.push(role.Role);
             }
@@ -89,7 +153,7 @@ exports.getAllUsers = async function () {
         }
     } catch (err) {
         console.log(err);
-    }finally{
+    } finally {
         con.end();
     }
 
@@ -107,18 +171,18 @@ exports.getUserById = async function (userId) {
 
     try {
         let sql = `select * from Users where UserId = ${userId}`;
-        
-        const [userResults, ] = await con.query(sql);
 
-        for(key in userResults){
+        const [userResults,] = await con.query(sql);
+
+        for (key in userResults) {
             let u = userResults[key];
 
             let sql = `select UserId, Role from UserRoles ur join Roles r on ur.roleid = r.roleid where ur.UserId = ${u.UserId}`;
             console.log(sql);
-            const [roleResults, ] = await con.query(sql);
+            const [roleResults,] = await con.query(sql);
 
             let roles = [];
-            for(key in roleResults){
+            for (key in roleResults) {
                 let role = roleResults[key];
                 roles.push(role.Role);
             }
@@ -126,7 +190,7 @@ exports.getUserById = async function (userId) {
         }
     } catch (err) {
         console.log(err);
-    }finally{
+    } finally {
         con.end();
     }
 
@@ -153,7 +217,7 @@ exports.deleteUserById = async function (userId) {
         console.log(err);
         result.status = STATUS_CODES.failure;
         result.message = err.message;
-    }finally{
+    } finally {
         con.end();
     }
 
@@ -172,18 +236,18 @@ exports.getUserByUsername = async function (username) {
     try {
         let sql = `select * from Users where Username = '${username}'`;
         console.log(sql);
-        
-        const [userResults, ] = await con.query(sql);
 
-        for(key in userResults){
+        const [userResults,] = await con.query(sql);
+
+        for (key in userResults) {
             let u = userResults[key];
 
             let sql = `select UserId, Role from UserRoles ur join Roles r on ur.roleid = r.roleid where ur.UserId = ${u.UserId}`;
             console.log(sql);
-            const [roleResults, ] = await con.query(sql);
+            const [roleResults,] = await con.query(sql);
 
             let roles = [];
-            for(key in roleResults){
+            for (key in roleResults) {
                 let role = roleResults[key];
                 roles.push(role.Role);
             }
@@ -191,7 +255,7 @@ exports.getUserByUsername = async function (username) {
         }
     } catch (err) {
         console.log(err);
-    }finally{
+    } finally {
         con.end();
     }
 
@@ -210,15 +274,15 @@ exports.getRolesByUserId = async function (userId) {
     try {
         let sql = `select UserId, Role from UserRoles ur join Roles r on ur.roleid = r.roleid where UserId = ${userId}`;
 
-        const [results, ] = await con.query(sql);
+        const [results,] = await con.query(sql);
 
-        for(key in results){
+        for (key in results) {
             let role = results[key];
             results.push(role.Role);
         }
     } catch (err) {
         console.log(err);
-    }finally{
+    } finally {
         con.end();
     }
 
@@ -255,7 +319,7 @@ exports.createUser = async function (username, hashedPassword, email, firstName,
         result.status = STATUS_CODES.failure;
         result.message = err.message;
         return result;
-    }finally{
+    } finally {
         con.end();
     }
 }
@@ -287,7 +351,26 @@ exports.updateUserPassword = async function (userId, hashedPassword) {
         return result;
     }
 }
+/**
+ * @param {*} userId 
+ * @returns promote/demote user
+ */
+exports.changeRoleById = async function (userId) {
+    let result = new Result();
 
+    const con = await mysql.createConnection(sqlConfig);
+
+    try {
+        //getRoleById if role == admin then update else if role == user update
+    } catch (err) {
+        console.log(err);
+        result.status = STATUS_CODES.failure;
+        result.message = err.message;
+    } finally {
+        con.end();
+    }
+    return result;
+}
 /**
  * 
  * @param {*} userId 
@@ -315,4 +398,82 @@ exports.updateProfile = async function (userId, firstName, lastName) {
         result.message = err.message;
         return result;
     }
+}
+
+
+/**
+ * @returns and array of pendingQuestions that have not been approved by an admin yet
+ */
+//add question to pending table?
+//OR
+//question table needs a status field bool
+exports.getPendingQuestion = async function () {
+    questions = [];
+
+    const con = await mysql.createConnection(sqlConfig);
+
+    try {
+        let sql = `select * from pendingQuestions;`;
+
+        const [questionResults,] = await con.query(sql);
+
+        // console.log('getPendingQuestions: results');
+        // console.log(questionResults);
+
+        for (key in questionResults) {
+            let qr = questionResults[key];
+
+            let sql = ``;
+            console.log(sql);
+            const [roleResults,] = await con.query(sql);
+
+            let roles = [];
+            for (key in roleResults) {
+                let role = roleResults[key];
+                roles.push(role.Role);
+            }
+            //create question model
+            questions.push(new Question(qr.pQuestionId, qr.pCategoryId, qr.pDiffId, qr.pQuestion, qr.pcorrectAnswer, qr.pIncorrectAnswers));
+        }
+    } catch (err) {
+        console.log(err);
+    } finally {
+        con.end();
+    }
+
+    return users;
+}
+
+
+/**
+ * @param {*} questionId
+ * @returns admin approves a question which deletes it from the pendingQuestions table and adds it to playable Questions
+ */
+exports.approveQuestion = async function (questionId) {
+    //approve click event, addQuestion(table = pendingQuestions), deleteQuestionById
+}
+
+/**
+ * @param {*} pQuestionId 
+ * @returns deletes question that was not approved by admin
+ */
+exports.deleteQuestionById = async function (pQuestionId) {
+    let result = new Result();
+
+    const con = await mysql.createConnection(sqlConfig);
+
+    try {
+        let sql = `delete from pendingQuestions where pQuestionId = ${pQuestionId}`;
+        let result = await con.query(sql);
+        // console.log(result);
+        result.status = STATUS_CODES.success;
+        result.message = `Pending question ${pQuestionId} delted!`;
+    } catch (err) {
+        console.log(err);
+        result.status = STATUS_CODES.failure;
+        result.message = err.message;
+    } finally {
+        con.end();
+    }
+    return result;
 }

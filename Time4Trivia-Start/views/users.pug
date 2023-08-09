@@ -15,4 +15,7 @@ block content
         ul
           each role in user.roles 
             li= role
-            
+         //- #{user.isAccountDisabled}
+        button Enable/Disable
+        //- if admin demote else promote
+        button Promote/Demote

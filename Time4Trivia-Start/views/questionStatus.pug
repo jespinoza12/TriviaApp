@@ -1,0 +1,15 @@
+extends layout
+
+block content
+  form(action='post')
+    h1 Questions
+    each question in questions 
+      div(class='userBox')
+        label #{question.question}
+        br
+        label Correct answer: #{question.correctAnswer}
+        ul
+            each incorrectAnswer in user.incorrectAnswers
+            li= incorrectAnswer
+        button Approve
+        button Delete
