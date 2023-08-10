@@ -8,7 +8,6 @@ router.get('/play', async function(req, res, next) {
       res.redirect('/u/login');
     } else {
       const questions = await questionController.getQuestions();
-      // Shuffle the questions randomly
       const shuffledQuestions = shuffleArray(questions).slice(0, 10);
       res.render('play', {
         user: req.session.user,
@@ -16,6 +15,7 @@ router.get('/play', async function(req, res, next) {
         title: 'Time 4 Trivia',
         questions: shuffledQuestions
       });
+
     }
   } catch (err) {
     console.error(err);
@@ -55,6 +55,8 @@ router.post('/submitAnswers', async function(req, res, next) {
         isCorrect
       });
     }
+
+    await questionController.addToLeaderBoard(req.session.user.userId, score);
 
     const nextQuestionIndex = req.session.userProgress.length;
     if (nextQuestionIndex >= 10) {

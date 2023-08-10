@@ -8,11 +8,60 @@ const { json } = require('express');
 const mysql = require('mysql2/promise');
 const sqlConfig = {
     host: 'localhost',
-    user: 'database',
-    password: '&my$qlGr4p3tUrn',
+    user: 'root',
+    password: '7piercerS!',
     database: 'Time4Trivia',
     multipleStatements: true
 };
+
+exports.getLeaderBoard = async function () {
+    let leaderBoard = [];
+
+    const con = await mysql.createConnection(sqlConfig);
+
+    try {
+        let sql = `
+            SELECT l.Score, u.Username
+            FROM LeaderBoard l
+            JOIN Users u ON l.UserId = u.UserId
+            ORDER BY l.Score DESC;
+        `;
+        
+        const [leaderBoardResults, ] = await con.query(sql);
+        leaderBoard = leaderBoardResults;
+
+    } catch (err) {
+        console.log(err);
+    } finally {
+        con.end();
+    }
+
+    return leaderBoard;
+}
+
+exports.addToLeaderBoard = async function (userId, score) {
+    const con = await mysql.createConnection(sqlConfig);
+    try {
+        let sql = `SELECT * FROM LeaderBoard WHERE UserId = ${userId};`;
+        const [existingUserRows, ] = await con.query(sql);
+
+        if (existingUserRows.length > 0) {
+            sql = `UPDATE LeaderBoard SET Score = ${score} WHERE UserId = ${userId}`;
+            await con.query(sql);
+
+            console.log(`User ${userId} updated in LeaderBoard with score ${score}`);
+        } else {
+            sql = `INSERT INTO LeaderBoard (UserId, Score) VALUES (${userId}, ${score});`;
+            await con.query(sql);
+
+            console.log(`User ${userId} added to LeaderBoard with score ${score}`);
+        }
+    } catch (err) {
+        console.log(err);
+    } finally {
+        con.end();
+    }
+}
 
 exports.createQuestion = async function (question, answers) {
     //Create questions that has the question and with the answers insert for each answer in Answers table with the QuestionID, Answer, and IsCorrect which is true or false
