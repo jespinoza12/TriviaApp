@@ -8,8 +8,8 @@ const STATUS_CODES = require('../models/statusCodes').STATUS_CODES;
  * @returns an array of user models
  */
 
-exports.getLeaderboard = async function () {
-    let results = await sqlDAL.getLeaderboard();
+exports.getLeaderBoard = async function () {
+    let results = await sqlDAL.getLeaderBoard();
     console.log(results)
     return results;
 }

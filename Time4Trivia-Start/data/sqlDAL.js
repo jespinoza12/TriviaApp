@@ -20,12 +20,19 @@ exports.getLeaderBoard = async function () {
     const con = await mysql.createConnection(sqlConfig);
 
     try {
-        let sql = `select * from LeaderBoard;`;
-        const [LeaderBoardResults, ] = await con.query(sql);
-        console.log(LeaderBoardResults); 
+        let sql = `
+            SELECT l.Score, u.Username
+            FROM LeaderBoard l
+            JOIN Users u ON l.UserId = u.UserId
+            ORDER BY l.Score DESC;
+        `;
+        
+        const [leaderBoardResults, ] = await con.query(sql);
+        leaderBoard = leaderBoardResults;
+
     } catch (err) {
         console.log(err);
-    }finally{
+    } finally {
         con.end();
     }
 

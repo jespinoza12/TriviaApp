@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const questionController = require('../controllers/questionController');
-const localStorage = require('localStorage');
 
 router.get('/play', async function(req, res, next) {
   try {
@@ -9,7 +8,6 @@ router.get('/play', async function(req, res, next) {
       res.redirect('/u/login');
     } else {
       const questions = await questionController.getQuestions();
-      // Shuffle the questions randomly
       const shuffledQuestions = shuffleArray(questions).slice(0, 10);
       res.render('play', {
         user: req.session.user,
