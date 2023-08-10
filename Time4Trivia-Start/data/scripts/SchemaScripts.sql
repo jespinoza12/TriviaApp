@@ -36,10 +36,24 @@ create table if not exists UserRoles(
     foreign key (RoleId) references Roles(RoleId)
 );
 
+create table if not exists Leaderboard(
+    UserId int,
+    Score int
+    PRIMARY KEY (UserId)
+    foreign key (userId) references Users(UserId)
+);
+
 create table if not exists Questions(
     QuestionId int NOT NULL AUTO_INCREMENT,
     Question text NOT NULL,
     PRIMARY KEY (QuestionId)
+);
+
+create table if not exists Leaderboard(
+    UserId int NOT NULL,
+	Score int NOT NULL,
+    PRIMARY KEY (UserId),
+    foreign key (UserId) references Users(UserId)
 );
 
 create table if not exists Answers(

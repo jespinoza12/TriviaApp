@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const questionController = require('../controllers/questionController');
+const localStorage = require('localStorage');
 
 router.get('/play', async function(req, res, next) {
   try {
@@ -16,6 +17,7 @@ router.get('/play', async function(req, res, next) {
         title: 'Time 4 Trivia',
         questions: shuffledQuestions
       });
+
     }
   } catch (err) {
     console.error(err);
@@ -55,6 +57,8 @@ router.post('/submitAnswers', async function(req, res, next) {
         isCorrect
       });
     }
+
+    await questionController.addToLeaderBoard(req.session.user.userId, score);
 
     const nextQuestionIndex = req.session.userProgress.length;
     if (nextQuestionIndex >= 10) {
