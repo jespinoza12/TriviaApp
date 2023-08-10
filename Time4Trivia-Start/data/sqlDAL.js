@@ -3,14 +3,15 @@ const User = require('../models/user').User;
 const Result = require('../models/result').Result;
 const Question = require('../models/question').Question;
 const STATUS_CODES = require('../models/statusCodes').STATUS_CODES;
+const dotenv = require('dotenv').config();
 
 const { json } = require('express');
 const mysql = require('mysql2/promise');
 const sqlConfig = {
-    host: 'localhost',
-    user: 'database',
-    password: '&my$qlGr4p3tUrn',
-    database: 'Time4Trivia',
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_DATABASE,
     multipleStatements: true
 };
 
