@@ -38,8 +38,15 @@ create table if not exists UserRoles(
 
 create table if not exists Leaderboard(
     UserId int,
-    Score int
-    PRIMARY KEY (UserId)
+    Score int,
+    PRIMARY KEY (UserId),
+    foreign key (userId) references Users(UserId)
+);
+
+create table if not exists DisabledUsers(
+    UserId int,
+    DisabledStatus boolean,
+    PRIMARY KEY (UserId),
     foreign key (userId) references Users(UserId)
 );
 
