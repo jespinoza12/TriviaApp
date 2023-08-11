@@ -72,13 +72,12 @@ exports.promoteUser = async function (userId) {
     }
 }
 
-
 exports.demoteUser = async function (userId) {
     const con = await mysql.createConnection(sqlConfig);
 
     try {
-        let sql = `UPDATE UserRoles SET RoleId = 1 WHERE UserId = ${userId} AND RoleId = 2;`; // Assuming RoleId 2 is for Admin role
-        await con.query(sql);
+        const demoteSql = `UPDATE UserRoles SET RoleId = 1 WHERE UserId = ? AND RoleId = 2`; // Assuming RoleId 2 is for Admin role
+        await con.query(demoteSql, [userId]);
 
         console.log(`User ${userId} demoted from Admin`);
     } catch (err) {
@@ -87,7 +86,6 @@ exports.demoteUser = async function (userId) {
         con.end();
     }
 }
-
 
 exports.getLeaderBoard = async function () {
     let leaderBoard = [];
@@ -113,6 +111,7 @@ exports.getLeaderBoard = async function () {
 
     return leaderBoard;
 }
+
 exports.addToLeaderBoard = async function (userId, score) {
     const con = await mysql.createConnection(sqlConfig);
     
@@ -189,7 +188,6 @@ exports.getQuestions = async function () {
 
     return questions;
 }
-
 
 exports.getAllUsers = async function () {
     const users = [];
