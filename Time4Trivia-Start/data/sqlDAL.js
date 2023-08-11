@@ -19,10 +19,10 @@ exports.disableUser = async function (userId) {
     const con = await mysql.createConnection(sqlConfig);
 
     try {
-        let sql = `INSERT INTO DisabledUsers (UserId, DisabledStatus) 
-                VALUES (${userId}, true)
-                ON DUPLICATE KEY UPDATE DisabledStatus = true;`;
-        await con.query(sql);
+        const sql = `INSERT INTO DisabledUsers (UserId, DisabledStatus) 
+                    VALUES (?, true)
+                    ON DUPLICATE KEY UPDATE DisabledStatus = true;`;
+        await con.query(sql, [userId]);
         console.log(`User ${userId} disabled`);
     } catch (err) {
         console.log(err);
@@ -35,10 +35,10 @@ exports.enableUser = async function (userId) {
     const con = await mysql.createConnection(sqlConfig);
 
     try {
-        let sql = `INSERT INTO DisabledUsers (UserId, DisabledStatus) 
-                VALUES (${userId}, false)
-                ON DUPLICATE KEY UPDATE DisabledStatus = false;`;
-        await con.query(sql);
+        const sql = `INSERT INTO DisabledUsers (UserId, DisabledStatus) 
+                    VALUES (?, false)
+                    ON DUPLICATE KEY UPDATE DisabledStatus = false;`;
+        await con.query(sql, [userId]);
 
         console.log(`User ${userId} enabled`);
     } catch (err) {
@@ -48,21 +48,19 @@ exports.enableUser = async function (userId) {
     }
 }
 
-
 exports.promoteUser = async function (userId) {
     const con = await mysql.createConnection(sqlConfig);
 
     try {
-        let checkSql = `SELECT UserId FROM UserRoles 
-                        WHERE UserId = ${userId} AND RoleId = 2;`;
-        const [results, ] = await con.query(checkSql);
+        const checkSql = `SELECT UserId FROM UserRoles 
+                        WHERE UserId = ? AND RoleId = 2;`;
+        const [results, ] = await con.query(checkSql, [userId]);
 
         if (results.length === 0) {
-            // Update the user's role to admin (RoleId 2)
-            let updateSql = `UPDATE UserRoles 
+            const updateSql = `UPDATE UserRoles 
                             SET RoleId = 2 
-                            WHERE UserId = ${userId};`;
-            await con.query(updateSql);
+                            WHERE UserId = ?;`;
+            await con.query(updateSql, [userId]);
             console.log(`User ${userId} promoted to Admin`);
         } else {
             console.log(`User ${userId} is already an Admin`);
@@ -73,6 +71,7 @@ exports.promoteUser = async function (userId) {
         con.end();
     }
 }
+
 
 exports.demoteUser = async function (userId) {
     const con = await mysql.createConnection(sqlConfig);
@@ -114,21 +113,21 @@ exports.getLeaderBoard = async function () {
 
     return leaderBoard;
 }
-
 exports.addToLeaderBoard = async function (userId, score) {
     const con = await mysql.createConnection(sqlConfig);
+    
     try {
-        let sql = `SELECT * FROM LeaderBoard WHERE UserId = ${userId};`;
-        const [existingUserRows, ] = await con.query(sql);
+        const checkSql = `SELECT * FROM LeaderBoard WHERE UserId = ?;`;
+        const [existingUserRows, ] = await con.query(checkSql, [userId]);
 
         if (existingUserRows.length > 0) {
-            sql = `UPDATE LeaderBoard SET Score = ${score} WHERE UserId = ${userId}`;
-            await con.query(sql);
+            const updateSql = `UPDATE LeaderBoard SET Score = ? WHERE UserId = ?`;
+            await con.query(updateSql, [score, userId]);
 
             console.log(`User ${userId} updated in LeaderBoard with score ${score}`);
         } else {
-            sql = `INSERT INTO LeaderBoard (UserId, Score) VALUES (${userId}, ${score});`;
-            await con.query(sql);
+            const insertSql = `INSERT INTO LeaderBoard (UserId, Score) VALUES (?, ?);`;
+            await con.query(insertSql, [userId, score]);
 
             console.log(`User ${userId} added to LeaderBoard with score ${score}`);
         }
@@ -140,31 +139,24 @@ exports.addToLeaderBoard = async function (userId, score) {
 }
 
 exports.createQuestion = async function (question, answers) {
-    //Create questions that has the question and with the answers insert for each answer in Answers table with the QuestionID, Answer, and IsCorrect which is true or false
     let result = new Result(STATUS_CODES.success, null);
 
     const con = await mysql.createConnection(sqlConfig);
 
     try {
-        let sql = `insert into Questions (Question) values ('${question}');`;
-        let [questionResult, ] = await con.query(sql);
+        const insertQuestionSql = `INSERT INTO Questions (Question) VALUES (?);`;
+        const [questionResult, ] = await con.query(insertQuestionSql, [question]);
+        const questionId = questionResult.insertId;
 
-        console.log(questionResult);
-
-        let questionId = questionResult.insertId;
-
-        for(key in answers){
-            let answer = answers[key];
-            let sql = `insert into Answers (QuestionId, Answer, Correct) values (${questionId}, '${answer.answer}', ${answer.Correct});`;
-            let [answerResult, ] = await con.query(sql);
-            console.log(answerResult);
+        for (const answer of answers) {
+            const insertAnswerSql = `INSERT INTO Answers (QuestionId, Answer, Correct) VALUES (?, ?, ?);`;
+            await con.query(insertAnswerSql, [questionId, answer.answer, answer.Correct]);
         }
-    }
-    catch (err) {
+
+    } catch (err) {
         console.log(err);
         result.status = STATUS_CODES.error;
-    }
-    finally {
+    } finally {
         con.end();
     }
 }
@@ -175,23 +167,19 @@ exports.getQuestions = async function () {
     const con = await mysql.createConnection(sqlConfig);
 
     try {
-        let sql = `select * from Questions;`;
-        const [questionResults, ] = await con.query(sql);
+        const selectQuestionsSql = `SELECT * FROM Questions;`;
+        const [questionResults, ] = await con.query(selectQuestionsSql);
 
-        for (key in questionResults) {
-            let q = questionResults[key];
-            let sql = `select * from Answers where QuestionId = ${q.QuestionId};`;
-            const [answerResults, ] = await con.query(sql);
+        for (const question of questionResults) {
+            const selectAnswersSql = `SELECT * FROM Answers WHERE QuestionId = ?;`;
+            const [answerResults, ] = await con.query(selectAnswersSql, [question.QuestionId]);
 
-            let answers = [];
-            for (key in answerResults) {
-                let a = answerResults[key];
-                answers.push({ answer: a.Answer, Correct: a.Correct });
+            const answers = [];
+            for (const answer of answerResults) {
+                answers.push({ answer: answer.Answer, Correct: answer.Correct });
             }
 
-            questions.push(new Question(q.QuestionId, q.Question, answers));
-
-            // Log the contents of the answers array for each question
+            questions.push(new Question(question.QuestionId, question.Question, answers));
         }
     } catch (err) {
         console.log(err);
@@ -201,118 +189,91 @@ exports.getQuestions = async function () {
 
     return questions;
 }
-/**
- * @returns and array of user models
- */
+
+
 exports.getAllUsers = async function () {
-    users = [];
+    const users = [];
 
     const con = await mysql.createConnection(sqlConfig);
 
     try {
-        let sql = `select * from Users;`;
+        const selectUsersSql = `SELECT * FROM Users;`;
+        const [userResults, ] = await con.query(selectUsersSql);
 
-        const [userResults, ] = await con.query(sql);
+        for (const user of userResults) {
+            const selectRolesSql = `SELECT UserId, Role FROM UserRoles ur JOIN Roles r ON ur.roleid = r.roleid WHERE ur.UserId = ?`;
+            const [roleResults, ] = await con.query(selectRolesSql, [user.UserId]);
 
-        // console.log('getAllUsers: user results');
-        // console.log(userResults);
-
-        for(key in userResults){
-            let u = userResults[key];
-
-            let sql = `select UserId, Role from UserRoles ur join Roles r on ur.roleid = r.roleid where ur.UserId = ${u.UserId}`;
-            console.log(sql);
-            const [roleResults, ] = await con.query(sql);
-
-            // console.log('getAllUsers: role results');
-            // console.log(roleResults);
-
-            let roles = [];
-            for(key in roleResults){
-                let role = roleResults[key];
+            const roles = [];
+            for (const role of roleResults) {
                 roles.push(role.Role);
             }
-            users.push(new User(u.UserId, u.Username, u.Email, u.FirstName, u.LastName, u.Password, roles));
+
+            users.push(new User(user.UserId, user.Username, user.Email, user.FirstName, user.LastName, user.Password, roles));
         }
     } catch (err) {
         console.log(err);
-    }finally{
+    } finally {
         con.end();
     }
 
     return users;
 }
 
-/**
- * @returns and array of user models
- */
 exports.getUsersByRole = async function (role) {
-    let users = [];
+    const users = [];
 
     const con = await mysql.createConnection(sqlConfig);
 
     try {
-        let sql = `select * from Users u join UserRoles ur on u.userid = ur.userId join Roles r on ur.roleId = r.roleId where r.role = '${role}'`;
+        const selectUsersSql = `SELECT * FROM Users u JOIN UserRoles ur ON u.userid = ur.userId JOIN Roles r ON ur.roleId = r.roleId WHERE r.role = ?`;
 
-        const [userResults, ] = await con.query(sql);
+        const [userResults, ] = await con.query(selectUsersSql, [role]);
 
-        for(key in userResults){
-            let u = userResults[key];
+        for (const user of userResults) {
+            const selectRolesSql = `SELECT UserId, Role FROM UserRoles ur JOIN Roles r ON ur.roleid = r.roleid WHERE ur.UserId = ?`;
+            const [roleResults, ] = await con.query(selectRolesSql, [user.UserId]);
 
-            let sql = `select UserId, Role from UserRoles ur join Roles r on ur.roleid = r.roleid where ur.UserId = ${u.UserId}`;
-            console.log(sql);
-            const [roleResults, ] = await con.query(sql);
-
-            let roles = [];
-            for(key in roleResults){
-                let role = roleResults[key];
+            const roles = [];
+            for (const role of roleResults) {
                 roles.push(role.Role);
             }
 
-            const disabledStatus = await exports.checkIfUserDisabled(u.UserId);
+            const disabledStatus = await exports.checkIfUserDisabled(user.UserId);
 
-            users.push(new User(u.UserId, u.Username, u.Email, u.FirstName, u.LastName, u.Password, roles, disabledStatus));
+            users.push(new User(user.UserId, user.Username, user.Email, user.FirstName, user.LastName, user.Password, roles, disabledStatus));
         }
     } catch (err) {
         console.log(err);
-    }finally{
+    } finally {
         con.end();
     }
 
     return users;
 }
 
-/**
- * @param {*} userId the userId of the user to find
- * @returns a User model or null if not found
- */
 exports.getUserById = async function (userId) {
     let user = null;
 
     const con = await mysql.createConnection(sqlConfig);
 
     try {
-        let sql = `select * from Users where UserId = ${userId}`;
-        
-        const [userResults, ] = await con.query(sql);
+        const selectUserSql = `SELECT * FROM Users WHERE UserId = ?`;
+        const [userResults, ] = await con.query(selectUserSql, [userId]);
 
-        for(key in userResults){
-            let u = userResults[key];
+        for (const userRow of userResults) {
+            const selectRolesSql = `SELECT UserId, Role FROM UserRoles ur JOIN Roles r ON ur.roleid = r.roleid WHERE ur.UserId = ?`;
+            const [roleResults, ] = await con.query(selectRolesSql, [userRow.UserId]);
 
-            let sql = `select UserId, Role from UserRoles ur join Roles r on ur.roleid = r.roleid where ur.UserId = ${u.UserId}`;
-            console.log(sql);
-            const [roleResults, ] = await con.query(sql);
-
-            let roles = [];
-            for(key in roleResults){
-                let role = roleResults[key];
+            const roles = [];
+            for (const role of roleResults) {
                 roles.push(role.Role);
             }
-            user = new User(u.UserId, u.Username, u.Email, u.FirstName, u.LastName, u.Password, roles);
+            user = new User(userRow.UserId, userRow.Username, userRow.Email, userRow.FirstName, userRow.LastName, userRow.Password, roles);
         }
     } catch (err) {
         console.log(err);
-    }finally{
+    } finally {
         con.end();
     }
 
@@ -320,27 +281,27 @@ exports.getUserById = async function (userId) {
 }
 
 exports.deleteUserById = async function (userId) {
-    let result = new Result();
+    const result = new Result();
 
     const con = await mysql.createConnection(sqlConfig);
 
     try {
-        let sql = `delete from UserRoles where UserId = ${userId}`;
-        let result = await con.query(sql);
+        const deleteUserRolesSql = `DELETE FROM UserRoles WHERE UserId = ?`;
+        await con.query(deleteUserRolesSql, [userId]);
 
-        sql = `delete from DisabledUsers where UserId = ${userId}`;
-        result = await con.query(sql);
+        const deleteDisabledUserSql = `DELETE FROM DisabledUsers WHERE UserId = ?`;
+        await con.query(deleteDisabledUserSql, [userId]);
 
-        sql = `delete from Users where UserId = ${userId}`;
-        result = await con.query(sql);
+        const deleteUserSql = `DELETE FROM Users WHERE UserId = ?`;
+        await con.query(deleteUserSql, [userId]);
 
         result.status = STATUS_CODES.success;
-        result.message = `User ${userId} delted!`;
+        result.message = `User ${userId} deleted!`;
     } catch (err) {
         console.log(err);
         result.status = STATUS_CODES.failure;
         result.message = err.message;
-    }finally{
+    } finally {
         con.end();
     }
 
@@ -351,18 +312,14 @@ exports.checkIfUserDisabled = async function (userId) {
     const con = await mysql.createConnection(sqlConfig);
 
     try {
-        let sql = `SELECT DisabledStatus FROM DisabledUsers WHERE UserId = ${userId};`;
-        const [results, ] = await con.query(sql);
+        const selectDisabledStatusSql = `SELECT DisabledStatus FROM DisabledUsers WHERE UserId = ?;`;
+        const [results, ] = await con.query(selectDisabledStatusSql, [userId]);
 
         if (results.length > 0) {
             const disabledStatus = results[0].DisabledStatus;
-            if (disabledStatus === 1){
-                return true;
-            }else if (disabledStatus === 0){
-                return false;
-            }
+            return disabledStatus === 1;
         } else {
-            return false; 
+            return false;
         }
     } catch (err) {
         console.log(err);
@@ -372,38 +329,30 @@ exports.checkIfUserDisabled = async function (userId) {
     }
 }
 
-/**
- * @param {*} username the username of the user to find
- * @returns a User model or null if not found
- */
 exports.getUserByUsername = async function (username) {
     let user = null;
 
     const con = await mysql.createConnection(sqlConfig);
 
     try {
-        let sql = `select * from Users where Username = '${username}'`;
-        console.log(sql);
+        const selectUserSql = `SELECT * FROM Users WHERE Username = ?`;
+        console.log(selectUserSql);
         
-        const [userResults, ] = await con.query(sql);
+        const [userResults, ] = await con.query(selectUserSql, [username]);
 
-        for(key in userResults){
-            let u = userResults[key];
+        for (const userRow of userResults) {
+            const selectRolesSql = `SELECT UserId, Role FROM UserRoles ur JOIN Roles r ON ur.roleid = r.roleid WHERE ur.UserId = ?`;
+            console.log(selectRolesSql);
+            const [roleResults, ] = await con.query(selectRolesSql, [userRow.UserId]);
 
-            let sql = `select UserId, Role from UserRoles ur join Roles r on ur.roleid = r.roleid where ur.UserId = ${u.UserId}`;
-            console.log(sql);
-            const [roleResults, ] = await con.query(sql);
-
-            let roles = [];
-            for(key in roleResults){
-                let role = roleResults[key];
+            const roles = [];
+            for (const role of roleResults) {
                 roles.push(role.Role);
             }
 
-            // Add checkIfUserIsDisabled here
-            const disabledStatus = await exports.checkIfUserDisabled(u.UserId);
+            const disabledStatus = await exports.checkIfUserDisabled(userRow.UserId);
 
-            user = new User(u.UserId, u.Username, u.Email, u.FirstName, u.LastName, u.Password, roles, disabledStatus);
+            user = new User(userRow.UserId, userRow.Username, userRow.Email, userRow.FirstName, userRow.LastName, userRow.Password, roles, disabledStatus);
             console.log("user: ", user)
         }
     } catch (err) {
@@ -415,54 +364,42 @@ exports.getUserByUsername = async function (username) {
     return user;
 }
 
-
-
-/**
- * @param {*} userId the userId of the user to find roles for
- * @returns an array of role names
- */
 exports.getRolesByUserId = async function (userId) {
-    results = [];
+    const roles = [];
 
     const con = await mysql.createConnection(sqlConfig);
 
     try {
-        let sql = `select UserId, Role from UserRoles ur join Roles r on ur.roleid = r.roleid where UserId = ${userId}`;
+        const selectRolesSql = `SELECT UserId, Role FROM UserRoles ur JOIN Roles r ON ur.roleid = r.roleid WHERE UserId = ?`;
+        console.log(selectRolesSql);
 
-        const [results, ] = await con.query(sql);
+        const [roleResults, ] = await con.query(selectRolesSql, [userId]);
 
-        for(key in results){
-            let role = results[key];
-            results.push(role.Role);
+        for (const role of roleResults) {
+            roles.push(role.Role);
         }
     } catch (err) {
         console.log(err);
-    }finally{
+    } finally {
         con.end();
     }
 
-    return results;
+    return roles;
 }
 
-/**
- * @param {*} username 
- * @param {*} hashedPassword 
- * @param {*} email 
- * @returns a result object with status/message
- */
 exports.createUser = async function (username, hashedPassword, email, firstName, lastName) {
-    let result = new Result();
+    const result = new Result();
 
     const con = await mysql.createConnection(sqlConfig);
 
     try {
-        let sql = `insert into Users (Username, Email, Password, FirstName, LastName) values ('${username}', '${email}', '${hashedPassword}', '${firstName}', '${lastName}')`;
-        const userResult = await con.query(sql);
+        const insertUserSql = `INSERT INTO Users (Username, Email, Password, FirstName, LastName) VALUES (?, ?, ?, ?, ?)`;
+        const userResult = await con.query(insertUserSql, [username, email, hashedPassword, firstName, lastName]);
 
-        let newUserId = userResult[0].insertId;
+        const newUserId = userResult[0].insertId;
 
-        sql = `insert into UserRoles (UserId, RoleId) values (${newUserId}, 1)`;
-        await con.query(sql);
+        const insertUserRoleSql = `INSERT INTO UserRoles (UserId, RoleId) VALUES (?, 1)`;
+        await con.query(insertUserRoleSql, [newUserId]);
 
         result.status = STATUS_CODES.success;
         result.message = 'Account Created with User Id: ' + newUserId;
@@ -474,29 +411,22 @@ exports.createUser = async function (username, hashedPassword, email, firstName,
         result.status = STATUS_CODES.failure;
         result.message = err.message;
         return result;
-    }finally{
+    } finally {
         con.end();
     }
 }
 
-/**
- * 
- * @param {*} userId 
- * @param {*} hashedPassword 
- * @returns a result object with status/message
- */
 exports.updateUserPassword = async function (userId, hashedPassword) {
-    let result = new Result();
+    const result = new Result();
 
     const con = await mysql.createConnection(sqlConfig);
 
     try {
-        let sql = `update Users set password = '${hashedPassword}' where userId = '${userId}'`;
-        const userResult = await con.query(sql);
+        const updatePasswordSql = `UPDATE Users SET Password = ? WHERE UserId = ?`;
+        const userResult = await con.query(updatePasswordSql, [hashedPassword, userId]);
 
-        // console.log(r);
         result.status = STATUS_CODES.success;
-        result.message = 'Profile updated';
+        result.message = 'Password updated';
         return result;
     } catch (err) {
         console.log(err);
@@ -504,26 +434,20 @@ exports.updateUserPassword = async function (userId, hashedPassword) {
         result.status = STATUS_CODES.failure;
         result.message = err.message;
         return result;
+    } finally {
+        con.end();
     }
 }
 
-/**
- * 
- * @param {*} userId 
- * @param {*} firstName 
- * @param {*} lastName
- * @returns a result object with status/message
- */
 exports.updateProfile = async function (userId, firstName, lastName) {
-    let result = new Result();
+    const result = new Result();
 
     const con = await mysql.createConnection(sqlConfig);
 
     try {
-        let sql = `update Users set firstName = '${firstName}', lastName = '${lastName}' where userId = '${userId}'`;
-        const userResult = await con.query(sql);
+        const updateProfileSql = `UPDATE Users SET FirstName = ?, LastName = ? WHERE UserId = ?`;
+        const userResult = await con.query(updateProfileSql, [firstName, lastName, userId]);
 
-        // console.log(r);
         result.status = STATUS_CODES.success;
         result.message = 'Profile updated';
         return result;
@@ -533,5 +457,7 @@ exports.updateProfile = async function (userId, firstName, lastName) {
         result.status = STATUS_CODES.failure;
         result.message = err.message;
         return result;
+    } finally {
+        con.end();
     }
 }
