@@ -1,18 +1,30 @@
 extends layout
 
 block content
-  form(action='post')
-    h1 Users
-    each user in users 
-      div(class='userBox')
-        h2 Username: #{user.username}
-        br
-        label First Name: #{user.firstName}
-        br
-        label Last Name: #{user.lastName}
-        br
-        h3 Roles
-        ul
-          each role in user.roles 
-            li= role
-            
+  h1 Users
+  each user in users 
+    .userBox
+      h2 Username: #{user.username}
+      br
+      label First Name: #{user.firstName}
+      br
+      label Last Name: #{user.lastName}
+      br
+      h3 Roles
+      ul
+        each role in user.roles 
+          li= role
+      if user.disabledStatus
+        p Status: Disabled
+      else
+        p Status: Enabled
+      form(action=`/a/users/delete/${user.userId}`, method='post')
+        button(type='submit') Delete User
+      form(action=`/a/users/promote/${user.userId}`, method='post')
+        button(type='submit') Promote to Admin
+      if user.disabledStatus
+        form(action=`/a/users/enable/${user.userId}`, method='post')
+          button(type='submit') Re-enable User
+      else
+        form(action=`/a/users/disable/${user.userId}`, method='post')
+          button(type='submit') Disable User

@@ -3,16 +3,92 @@ const User = require('../models/user').User;
 const Result = require('../models/result').Result;
 const Question = require('../models/question').Question;
 const STATUS_CODES = require('../models/statusCodes').STATUS_CODES;
+const dotenv = require('dotenv').config();
 
 const { json } = require('express');
 const mysql = require('mysql2/promise');
 const sqlConfig = {
-    host: 'localhost',
-    user: 'root',
-    password: '7piercerS!',
-    database: 'Time4Trivia',
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_DATABASE,
     multipleStatements: true
 };
+
+exports.disableUser = async function (userId) {
+    const con = await mysql.createConnection(sqlConfig);
+
+    try {
+        let sql = `INSERT INTO DisabledUsers (UserId, DisabledStatus) 
+                VALUES (${userId}, true)
+                ON DUPLICATE KEY UPDATE DisabledStatus = true;`;
+        await con.query(sql);
+        console.log(`User ${userId} disabled`);
+    } catch (err) {
+        console.log(err);
+    } finally {
+        con.end();
+    }
+}
+
+exports.enableUser = async function (userId) {
+    const con = await mysql.createConnection(sqlConfig);
+
+    try {
+        let sql = `INSERT INTO DisabledUsers (UserId, DisabledStatus) 
+                VALUES (${userId}, false)
+                ON DUPLICATE KEY UPDATE DisabledStatus = false;`;
+        await con.query(sql);
+
+        console.log(`User ${userId} enabled`);
+    } catch (err) {
+        console.log(err);
+    } finally {
+        con.end();
+    }
+}
+
+
+exports.promoteUser = async function (userId) {
+    const con = await mysql.createConnection(sqlConfig);
+
+    try {
+        let checkSql = `SELECT UserId FROM UserRoles 
+                        WHERE UserId = ${userId} AND RoleId = 2;`;
+        const [results, ] = await con.query(checkSql);
+
+        if (results.length === 0) {
+            // Update the user's role to admin (RoleId 2)
+            let updateSql = `UPDATE UserRoles 
+                            SET RoleId = 2 
+                            WHERE UserId = ${userId};`;
+            await con.query(updateSql);
+            console.log(`User ${userId} promoted to Admin`);
+        } else {
+            console.log(`User ${userId} is already an Admin`);
+        }
+    } catch (err) {
+        console.log(err);
+    } finally {
+        con.end();
+    }
+}
+
+exports.demoteUser = async function (userId) {
+    const con = await mysql.createConnection(sqlConfig);
+
+    try {
+        let sql = `UPDATE UserRoles SET RoleId = 1 WHERE UserId = ${userId} AND RoleId = 2;`; // Assuming RoleId 2 is for Admin role
+        await con.query(sql);
+
+        console.log(`User ${userId} demoted from Admin`);
+    } catch (err) {
+        console.log(err);
+    } finally {
+        con.end();
+    }
+}
+
 
 exports.getLeaderBoard = async function () {
     let leaderBoard = [];
@@ -171,7 +247,7 @@ exports.getAllUsers = async function () {
  * @returns and array of user models
  */
 exports.getUsersByRole = async function (role) {
-    users = [];
+    let users = [];
 
     const con = await mysql.createConnection(sqlConfig);
 
@@ -180,9 +256,6 @@ exports.getUsersByRole = async function (role) {
 
         const [userResults, ] = await con.query(sql);
 
-        // console.log('getAllUsers: user results');
-        // console.log(userResults);
-
         for(key in userResults){
             let u = userResults[key];
 
@@ -190,15 +263,15 @@ exports.getUsersByRole = async function (role) {
             console.log(sql);
             const [roleResults, ] = await con.query(sql);
 
-            // console.log('getAllUsers: role results');
-            // console.log(roleResults);
-
             let roles = [];
             for(key in roleResults){
                 let role = roleResults[key];
                 roles.push(role.Role);
             }
-            users.push(new User(u.UserId, u.Username, u.Email, u.FirstName, u.LastName, u.Password, roles));
+
+            const disabledStatus = await exports.checkIfUserDisabled(u.UserId);
+
+            users.push(new User(u.UserId, u.Username, u.Email, u.FirstName, u.LastName, u.Password, roles, disabledStatus));
         }
     } catch (err) {
         console.log(err);
@@ -254,11 +327,12 @@ exports.deleteUserById = async function (userId) {
     try {
         let sql = `delete from UserRoles where UserId = ${userId}`;
         let result = await con.query(sql);
-        // console.log(result);
+
+        sql = `delete from DisabledUsers where UserId = ${userId}`;
+        result = await con.query(sql);
 
         sql = `delete from Users where UserId = ${userId}`;
         result = await con.query(sql);
-        // console.log(result);
 
         result.status = STATUS_CODES.success;
         result.message = `User ${userId} delted!`;
@@ -271,6 +345,31 @@ exports.deleteUserById = async function (userId) {
     }
 
     return result;
+}
+
+exports.checkIfUserDisabled = async function (userId) {
+    const con = await mysql.createConnection(sqlConfig);
+
+    try {
+        let sql = `SELECT DisabledStatus FROM DisabledUsers WHERE UserId = ${userId};`;
+        const [results, ] = await con.query(sql);
+
+        if (results.length > 0) {
+            const disabledStatus = results[0].DisabledStatus;
+            if (disabledStatus === 1){
+                return true;
+            }else if (disabledStatus === 0){
+                return false;
+            }
+        } else {
+            return false; 
+        }
+    } catch (err) {
+        console.log(err);
+        return false;
+    } finally {
+        con.end();
+    }
 }
 
 /**
@@ -300,16 +399,23 @@ exports.getUserByUsername = async function (username) {
                 let role = roleResults[key];
                 roles.push(role.Role);
             }
-            user = new User(u.UserId, u.Username, u.Email, u.FirstName, u.LastName, u.Password, roles);
+
+            // Add checkIfUserIsDisabled here
+            const disabledStatus = await exports.checkIfUserDisabled(u.UserId);
+
+            user = new User(u.UserId, u.Username, u.Email, u.FirstName, u.LastName, u.Password, roles, disabledStatus);
+            console.log("user: ", user)
         }
     } catch (err) {
         console.log(err);
-    }finally{
+    } finally {
         con.end();
     }
 
     return user;
 }
+
+
 
 /**
  * @param {*} userId the userId of the user to find roles for

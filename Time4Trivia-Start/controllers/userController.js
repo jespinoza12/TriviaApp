@@ -4,6 +4,22 @@ const sqlDAL = require('../data/sqlDAL');
 const Result = require('../models/result').Result;
 const STATUS_CODES = require('../models/statusCodes').STATUS_CODES;
 
+exports.demoteUser = async function (userId) {
+    return await sqlDAL.demoteUser(userId);
+}
+
+exports.promoteUser = async function (userId) {
+    return await sqlDAL.promoteUser(userId);
+}
+
+exports.disableUser = async function (userId) {
+    return await sqlDAL.disableUser(userId);
+}
+
+exports.enableUser = async function (userId) {
+    return await sqlDAL.enableUser(userId);
+}
+
 /**
  * 
  * @returns an array of user models
@@ -90,24 +106,24 @@ exports.updateUserPassword = async function (userId, currentPassword, newPasswor
  * @returns The result of the login attempt
  */
 exports.login = async function (username, password) {
-    // console.log(`Logging in with username ${username}`);
-
-    // Get User by Username
     let user = await sqlDAL.getUserByUsername(username);
 
     if (!user) return new Result(STATUS_CODES.failure, 'Invalid Login.');
 
-    let passwordsMatch = await bcrypt.compare(password, user.password); // does the given password match the user's hashed password?
+    // Check if user is disabled
+    if (user.disabledStatus) {
+        return new Result(STATUS_CODES.failure, 'User is disabled.');
+    }
+
+    let passwordsMatch = await bcrypt.compare(password, user.password); 
 
     if (passwordsMatch) {
-        // console.log('Successful login for ' + username);
-        // console.log(user);
-
         return new Result(STATUS_CODES.success, 'Valid Login.', user);
     } else {
         return new Result(STATUS_CODES.failure, 'Invalid Login.');
     }
 }
+
 
 /**
  * 
