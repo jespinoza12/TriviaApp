@@ -5,13 +5,10 @@ const Result = require('../models/result').Result;
 const STATUS_CODES = require('../models/statusCodes').STATUS_CODES;
 
 
-const rolePattern = /^user|admin$/;
+
 const emailPattern = /^([a-zA-Z0-9]+@[a-zA-Z0-9]+\.[a-zA-Z]{2,6})*$/;
 const textPattern = /^[a-zA-Z0-9]{3,16}$/;
 const namePattern = /^[A-Za-z]{3,25}$/;
-const questionPattern = /^[A-Za-z?]+$/;
-const answerPattern = /^[A-Za-z.]+$/;
-const difficultyPattern = /^Easy|Medium|Hard$/;
 
 /**
  * 
@@ -24,6 +21,14 @@ exports.getUsers = async function (role = 'user') {
     return results;
 }
 
+exports.getUsersByRole = async function (role) {
+    const rolePattern = /^user|admin$/;
+    if (rolePattern.test() == false){
+        return { status: 'Failure', message: 'Please enter a valid role' }
+    }
+    let results = await sqlDAL.getUsersByRole(role);
+    return results;
+}
 /**
  * 
  * @param {*} username 
@@ -139,6 +144,14 @@ exports.login = async function (username, password) {
 exports.getUserById = function (userId) {
     return sqlDAL.getUserById(userId);
 }
+
+/**
+ * 
+ * @param {*} userId 
+ * @returns the matching user model or null
+ */
+
+
 
 /**
  * 

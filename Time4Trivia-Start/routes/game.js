@@ -96,4 +96,20 @@ router.get('/results', function(req, res, next) {
   }
 });
 
+router.post('/newQuestion', async function(req, res, next){
+  let question = req.body.question;
+  let category = req.body.category;
+  let difficulty = req.body.difficulty;
+  let correctAnswer = req.body.correctAnswer;
+  let incorrectAnswers = req.body.incorrectAnswers;
+
+  let result = await questionController.createQuestion(question, category, difficulty, correctAnswer, incorrectAnswers);
+
+  if (result?.status == STATUS_CODES.success) {
+    res.redirect('');
+  } else {
+    res.render('index', { title: 'Time 4 Trivia', error: 'Question Creation Failed' });
+  }
+});
+
 module.exports = router;

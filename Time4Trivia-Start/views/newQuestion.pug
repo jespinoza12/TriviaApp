@@ -4,7 +4,7 @@ block content
     h3 Add a Question:
     div **All questions must be approved by an Admin before they will be included in game.
 
-    form(action='/u/addQuestion', method='POST')
+    form(method='post')
         input(type='text', name='newQuestion' placeholder="Enter your new question")
         br
         input(type='text', name='newQuestion' placeholder="Correct answer")
@@ -15,4 +15,5 @@ block content
         br
         input(type='text', name='newQuestion' placeholder="Incorrect answer")
         br 
-        button(type='submit' text='Submit')
+        form(action=`/u/createQuestion/${question.questionId}`, method='post')
+            button (type='submit') Submit

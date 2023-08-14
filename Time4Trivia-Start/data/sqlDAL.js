@@ -5,6 +5,8 @@ const Question = require('../models/question').Question;
 const STATUS_CODES = require('../models/statusCodes').STATUS_CODES;
 
 const mysql = require('mysql2/promise');
+const { getUserById } = require('../controllers/userController');
+const { getPendingQuestions } = require('../controllers/questionController');
 const sqlConfig = {
     host: 'localhost',
     user: 'root',
@@ -13,26 +15,17 @@ const sqlConfig = {
     multipleStatements: true
 };
 
-exports.createQuestion = async function (question, answers) {
-    //Create questions that has the question and with the answers insert for each answer in Answers table with the QuestionID, Answer, and IsCorrect which is true or false
+exports.createQuestion = async function (question, category, difficulty, correctAnswer, incorrectAnswers) {
     let result = new Result(STATUS_CODES.success, null);
 
     const con = await mysql.createConnection(sqlConfig);
 
     try {
-        let sql = `insert into Questions (Question) values ('${question}');`;
+        let sql = `insert into questions (question, category, difficulty, correctAnswer, incorrectAnswer, isActive) values ('${question}', '${category}', '${difficulty}', '${correctAnswer}', '${incorrectAnswers}', 0);`;
         let [questionResult,] = await con.query(sql);
 
-        console.log(questionResult);
+        //console.log(questionResult);
 
-        let questionId = questionResult.insertId;
-
-        for (key in answers) {
-            let answer = answers[key];
-            let sql = `insert into Answers (QuestionId, Answer, Correct) values (${questionId}, '${answer.answer}', ${answer.Correct});`;
-            let [answerResult,] = await con.query(sql);
-            console.log(answerResult);
-        }
     }
     catch (err) {
         console.log(err);
@@ -49,24 +42,24 @@ exports.getQuestions = async function () {
     const con = await mysql.createConnection(sqlConfig);
 
     try {
-        let sql = `select * from Questions;`;
+        let sql = `select * from questions where isActive = 1;`;
         const [questionResults,] = await con.query(sql);
 
-        for (key in questionResults) {
-            let q = questionResults[key];
-            let sql = `select * from Answers where QuestionId = ${q.QuestionId};`;
-            const [answerResults,] = await con.query(sql);
+        // for (key in questionResults) {
+        //     let q = questionResults[key];
+        //     let sql = `select * from Answers where QuestionId = ${q.QuestionId};`;
+        //     const [answerResults,] = await con.query(sql);
 
-            let answers = [];
-            for (key in answerResults) {
-                let a = answerResults[key];
-                answers.push({ answer: a.Answer, Correct: a.Correct });
-            }
+        //     let answers = [];
+        //     for (key in answerResults) {
+        //         let a = answerResults[key];
+        //         answers.push({ answer: a.Answer, Correct: a.Correct });
+        //     }
 
-            questions.push(new Question(q.QuestionId, q.Question, answers));
+        //     questions.push(new Question(q.QuestionId, q.Question, answers));
 
-            // Log the contents of the answers array for each question
-        }
+        //     // Log the contents of the answers array for each question
+        // }
     } catch (err) {
         console.log(err);
     } finally {
@@ -337,7 +330,7 @@ exports.updateUserPassword = async function (userId, hashedPassword) {
 
     try {
         let sql = `update Users set password = '${hashedPassword}' where userId = '${userId}'`;
-        const userResult = await con.query(sql);
+        const result = await con.query(sql);
 
         // console.log(r);
         result.status = STATUS_CODES.success;
@@ -362,6 +355,7 @@ exports.changeRoleById = async function (userId) {
 
     try {
         //getRoleById if role == admin then update else if role == user update
+    
     } catch (err) {
         console.log(err);
         result.status = STATUS_CODES.failure;
@@ -402,18 +396,17 @@ exports.updateProfile = async function (userId, firstName, lastName) {
 
 
 /**
- * @returns and array of pendingQuestions that have not been approved by an admin yet
+ * @returns and array of pending questions that have not been approved by an admin yet
  */
 //add question to pending table?
 //OR
 //question table needs a status field bool
-exports.getPendingQuestion = async function () {
+exports.getPendingQuestions = async function () {
     questions = [];
-
     const con = await mysql.createConnection(sqlConfig);
 
     try {
-        let sql = `select * from pendingQuestions;`;
+        let sql = `select * from questions where isActive = 0;`;
 
         const [questionResults,] = await con.query(sql);
 
@@ -433,7 +426,7 @@ exports.getPendingQuestion = async function () {
                 roles.push(role.Role);
             }
             //create question model
-            questions.push(new Question(qr.pQuestionId, qr.pCategoryId, qr.pDiffId, qr.pQuestion, qr.pcorrectAnswer, qr.pIncorrectAnswers));
+            questions.push(new Question());
         }
     } catch (err) {
         console.log(err);
@@ -450,20 +443,40 @@ exports.getPendingQuestion = async function () {
  * @returns admin approves a question which deletes it from the pendingQuestions table and adds it to playable Questions
  */
 exports.approveQuestion = async function (questionId) {
-    //approve click event, addQuestion(table = pendingQuestions), deleteQuestionById
+    let result = new Result();
+
+    const con = await mysql.createConnection(sqlConfig);
+    const [questionResults,] = await con.query(sql);
+
+    try {
+        let sql = `select * from questions where questionId = ${questionId} AND isActive = 0;
+        update questions
+        set isActive = 1`;
+        let result = await con.query(sql);
+        // console.log(result);
+        result.status = STATUS_CODES.success;
+        result.message = `Question ${pQuestionId} approved!`;
+    } catch (err) {
+        console.log(err);
+        result.status = STATUS_CODES.failure;
+        result.message = err.message;
+    } finally {
+        con.end();
+    }
+    return result;
 }
 
 /**
- * @param {*} pQuestionId 
+ * @param {*} questionId 
  * @returns deletes question that was not approved by admin
  */
-exports.deleteQuestionById = async function (pQuestionId) {
+exports.deleteQuestion = async function (questionId) {
     let result = new Result();
 
     const con = await mysql.createConnection(sqlConfig);
 
     try {
-        let sql = `delete from pendingQuestions where pQuestionId = ${pQuestionId}`;
+        let sql = `delete from questions where questionId = ${questionId}`;
         let result = await con.query(sql);
         // console.log(result);
         result.status = STATUS_CODES.success;

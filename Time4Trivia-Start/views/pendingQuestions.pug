@@ -1,0 +1,19 @@
+extends layout
+
+block content
+  form(action='post')
+    h1 Questions
+    each question in questions 
+      div(class='userBox')
+        label #{question.question}
+        br
+        label Correct answer: #{question.correctAnswer}
+        ul
+            each incorrectAnswer in user.incorrectAnswers
+            li= incorrectAnswer
+        label Category: #{question.category}
+        label Difficulty: #{question.difficulty}
+        form(action=`/a/pendingQuestions/approve/${question.questionId}`, method='post')
+          button (type='submit') Approve
+        form(action=`/a/pendingQuestions/delete/${question.questionId}`, method='post')
+          button (type='submit') Delete
