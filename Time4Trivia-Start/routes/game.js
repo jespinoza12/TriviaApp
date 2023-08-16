@@ -11,7 +11,7 @@ router.get('/play', async function(req, res, next) {
       const shuffledQuestions = shuffleArray(questions).slice(0, 10);
       res.render('play', {
         user: req.session.user,
-        isAdmin: req.cookies.isAdmin,
+        isAdmin: req.session.user.isAdmin,
         title: 'Time 4 Trivia',
         questions: shuffledQuestions
       });
